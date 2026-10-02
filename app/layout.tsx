@@ -19,6 +19,9 @@ export const metadata: Metadata = {
     'ssl certificate check',
   ],
   authors: [{ name: 'AEGOVX Security' }],
+  verification: {
+    google: '16C2uqzK4P9W7wQbDjuwuhAaBJhRVXEKHc0j9I_4pFo',
+  },
   icons: {
     icon: '/aegovx-logo.jpg',
     apple: '/aegovx-logo.jpg',
