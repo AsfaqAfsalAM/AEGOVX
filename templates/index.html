@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AEGOVX — Evidence Before Trust | Professional URL Security &amp; Risk Scanner</title>
+  <meta name="description" content="AEGOVX: Professional URL security and website-risk scanner. Maximum detection accuracy, transparent evidence chains, and strict separation between malicious threats and security hardening." />
+  <link rel="icon" type="image/jpeg" href="/static/aegovx-logo.jpg" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+</head>
+<body>
+
+  <!-- ── Global Navigation / Header ── -->
+  <header class="site-header container">
+    <div class="header-brand">
+      <img src="/static/aegovx-logo.jpg" alt="AEGOVX Logo" class="brand-logo-img" />
+      <div class="brand-text">
+        <span class="site-name">AEGOVX</span>
+        <span class="site-badge">EVIDENCE BEFORE TRUST</span>
+      </div>
+    </div>
+    <div class="header-nav">
+      <a href="#how-it-works" class="nav-link">Methodology</a>
+      <a href="#security-checks" class="nav-link">Security Checks</a>
+      <a href="#uncertainty" class="nav-link">Evidence Limits</a>
+      <a href="#faq" class="nav-link">FAQ</a>
+    </div>
+  </header>
+
+  <!-- ── Main Content Area ── -->
+  <main>
+    <!-- ── Hero Section ── -->
+    <section class="hero container" aria-labelledby="hero-heading">
+      <div class="hero-badge" aria-hidden="true">
+        <span class="badge-dot"></span> Evidence-First Threat &amp; Configuration Intelligence
+      </div>
+
+      <h1 id="hero-heading">AEGOVX<br /><span class="hero-motto">Evidence Before Trust</span></h1>
+
+      <p class="hero-sub">
+        Maximum practical detection accuracy with verifiable evidence chains. Strictly separates external malicious threats from defensive security hardening.
+      </p>
+
+      <!-- Scan Card -->
+      <div class="scan-card" role="region" aria-label="URL Security Scanner">
+        <label for="url-input" class="scan-label">🌐 Enter Website URL to Analyze</label>
+        <div class="scan-row">
+          <input
+            id="url-input"
+            class="url-input"
+            type="url"
+            placeholder="https://example.com"
+            autocomplete="off"
+            spellcheck="false"
+            aria-describedby="error-msg"
+          />
+          <button id="scan-btn" class="btn btn-primary" type="button">
+            <span class="spinner" aria-hidden="true"></span>
+            <span class="btn-label">Scan Website →</span>
+          </button>
+        </div>
+
+        <!-- Scan Progress Interface (Real operation tracker) -->
+        <div id="scan-progress-box" class="scan-progress-box" aria-live="polite">
+          <div class="progress-bar-wrap">
+            <div id="progress-bar-fill" class="progress-bar-fill"></div>
+          </div>
+          <div class="progress-header">
+            <span class="progress-title">🔍 Scanning Website Security Signals...</span>
+            <span id="progress-percent" class="progress-percent">0%</span>
+          </div>
+          <ul id="progress-steps" class="progress-steps">
+            <li id="pstep-1" class="pstep active"><span class="step-icon">⟳</span> Validating URL syntax &amp; SSRF defense</li>
+            <li id="pstep-2" class="pstep pending"><span class="step-icon">○</span> Resolving DNS records &amp; infrastructure</li>
+            <li id="pstep-3" class="pstep pending"><span class="step-icon">○</span> Querying multi-source Threat Intelligence</li>
+            <li id="pstep-4" class="pstep pending"><span class="step-icon">○</span> Inspecting TLS/SSL certificate &amp; ciphers</li>
+            <li id="pstep-5" class="pstep pending"><span class="step-icon">○</span> Tracing redirect chain &amp; SSRF checks</li>
+            <li id="pstep-6" class="pstep pending"><span class="step-icon">○</span> Evaluating HTTP security headers &amp; leaks</li>
+            <li id="pstep-7" class="pstep pending"><span class="step-icon">○</span> Calculating normalized risk score &amp; confidence</li>
+          </ul>
+        </div>
+
+        <!-- Error banner -->
+        <div id="error-banner" class="error-banner" role="alert" aria-atomic="true">
+          <span class="error-icon" aria-hidden="true">⚠️</span>
+          <span id="error-msg"></span>
+        </div>
+      </div>
+
+      <div class="hero-disclaimers">
+        <p class="disclaimer">
+          🔒 Only scan websites you own or have permission to test.
+        </p>
+        <p class="disclaimer-sub">
+          <strong>Important Security Note:</strong> This scanner analyzes publicly observable signals and threat feeds. A clean result does not guarantee that a website is 100% safe.
+        </p>
+      </div>
+
+      <!-- Quick Recent Scans Strip -->
+      <div id="recent-scans-strip" class="recent-scans-strip" style="display:none;">
+        <span class="recent-label">🕒 Recent Scans:</span>
+        <div id="recent-scans-list" class="recent-scans-list"></div>
+      </div>
+    </section>
+
+    <!-- ── Comprehensive Scan Results Section ── -->
+    <section id="results-section" class="results-section" aria-label="Scan Results" aria-live="polite">
+      <div class="container">
+
+        <!-- Results Action Top Bar -->
+        <div class="results-topbar">
+          <div class="scanned-meta">
+            <span class="report-badge">Website Security Report</span>
+            <div class="url-scan-row">
+              <span class="target-title">Target:</span>
+              <a id="scanned-url-link" href="#" target="_blank" rel="noopener noreferrer" class="scanned-url-link">
+                <code id="scanned-url"></code>
+              </a>
+            </div>
+            <div class="scan-id-row">
+              <span>Scan ID: <code id="scan-id-val"></code></span>
+              <span class="sep">•</span>
+              <span id="scan-time-val"></span>
+            </div>
+          </div>
+          <div class="results-actions">
+            <button id="new-scan-btn" class="btn btn-outline btn-sm">← Scan Another URL</button>
+            <button id="copy-report-btn" class="btn btn-outline btn-sm">📋 Copy Report</button>
+            <button id="download-json-btn" class="btn btn-outline btn-sm">⬇ Download JSON</button>
+            <button id="print-pdf-btn" class="btn btn-outline btn-sm">🖨️ Print / PDF</button>
+          </div>
+        </div>
+
+        <!-- Master Risk Summary Hero Card -->
+        <div id="risk-master-card" class="risk-master-card">
+          <div class="risk-card-left">
+            <div class="risk-badge-wrap">
+              <span id="risk-level-badge" class="risk-level-badge">SAFE</span>
+              <span id="confidence-badge" class="confidence-badge">Confidence: High</span>
+              <span id="coverage-badge" class="coverage-badge">Analysis Coverage: 100%</span>
+            </div>
+            <h2 id="risk-headline" class="risk-headline">No Known Malicious Indicators</h2>
+            <div id="confidence-reason" class="confidence-reason">Direct network analysis succeeded across active tests.</div>
+            <p id="risk-subtext" class="risk-subtext">No known threats detected in active intelligence feeds. Security configurations conform to standard baseline.</p>
+            <div class="risk-notes-pill">
+              <span class="note-icon">ℹ️</span>
+              <span id="risk-truth-statement">"No threats detected" means no known indicators were found in active feeds. It does NOT guarantee complete safety.</span>
+            </div>
+          </div>
+
+          <div class="risk-card-right">
+            <!-- Metric 1: Risk Assessment -->
+            <div class="metric-card risk-metric-card">
+              <div class="gauge-header">
+                <span class="gauge-label">THREAT REPUTATION</span>
+                <span class="metric-hint">Lower is safer</span>
+              </div>
+              <div class="gauge-value-row">
+                <span id="risk-score-num" class="risk-score-num">0</span>
+                <span class="gauge-max">/ 100 Threat</span>
+              </div>
+              <div class="gauge-track">
+                <div id="risk-gauge-fill" class="gauge-fill"></div>
+              </div>
+              <div class="gauge-scale">
+                <span>0 Clean</span>
+                <span>20 Low</span>
+                <span>40 Suspicious</span>
+                <span>60 High</span>
+                <span>80+ Critical</span>
+              </div>
+            </div>
+
+            <!-- Metric 2: Security Health & Headers Score -->
+            <div class="metric-card posture-metric-card">
+              <div class="gauge-header">
+                <span class="gauge-label">SECURITY CONFIGURATION</span>
+                <span class="metric-hint">Higher is better</span>
+              </div>
+              <div class="posture-row">
+                <div id="header-grade-badge" class="master-grade-badge gc-f">F</div>
+                <div class="posture-numbers">
+                  <div class="score-line">
+                    <span id="header-score-num" class="posture-score-num">0</span>
+                    <span class="gauge-max">/ 100 points</span>
+                  </div>
+                  <div id="header-status-label" class="posture-status-label">Analyzing...</div>
+                </div>
+              </div>
+              <div class="posture-notice">
+                ℹ️ Security configuration measures defense-in-depth hardening. Missing headers represent server defense opportunities, NOT evidence of malicious intent.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category Overview 6-Card Grid -->
+        <div class="section-title-wrap">
+          <h3 class="section-title">📊 Security Signal Categories</h3>
+          <span class="section-sub">Normalized evidence breakdown across independent analysis vectors</span>
+        </div>
+
+        <div class="categories-grid">
+          <!-- 1. Threat Intelligence -->
+          <div class="cat-card" id="cat-card-ti">
+            <div class="cat-card-header">
+              <div class="cat-icon-box ti-icon">🛡️</div>
+              <div class="cat-meta">
+                <div class="cat-name">Threat Intelligence</div>
+                <div id="cat-status-ti" class="cat-status">Checking...</div>
+              </div>
+              <div class="cat-score-pill" id="cat-pts-ti">0 / 50 pts</div>
+            </div>
+            <p id="cat-desc-ti" class="cat-desc">Queries Google Safe Browsing, VirusTotal, and URLhaus (abuse.ch).</p>
+            <div class="cat-quick-data" id="cat-quick-ti"></div>
+          </div>
+
+          <!-- 2. URL Heuristics -->
+          <div class="cat-card" id="cat-card-heur">
+            <div class="cat-card-header">
+              <div class="cat-icon-box heur-icon">🔎</div>
+              <div class="cat-meta">
+                <div class="cat-name">URL Heuristics</div>
+                <div id="cat-status-heur" class="cat-status">Checking...</div>
+              </div>
+              <div class="cat-score-pill" id="cat-pts-heur">0 / 15 pts</div>
+            </div>
+            <p id="cat-desc-heur" class="cat-desc">Analyzes IP-host format, entropy, homoglyphs, and path indicators.</p>
+            <div class="cat-quick-data" id="cat-quick-heur"></div>
+          </div>
+
+          <!-- 3. Domain & DNS -->
+          <div class="cat-card" id="cat-card-dns">
+            <div class="cat-card-header">
+              <div class="cat-icon-box dns-icon">🌐</div>
+              <div class="cat-meta">
+                <div class="cat-name">Domain &amp; Infrastructure</div>
+                <div id="cat-status-dns" class="cat-status">Checking...</div>
+              </div>
+              <div class="cat-score-pill" id="cat-pts-dns">0 / 10 pts</div>
+            </div>
+            <p id="cat-desc-dns" class="cat-desc">Validates DNS A/AAAA resolution, PTR reverse DNS, and RDAP registration.</p>
+            <div class="cat-quick-data" id="cat-quick-dns"></div>
+          </div>
+
+          <!-- 4. HTTPS / TLS -->
+          <div class="cat-card" id="cat-card-tls">
+            <div class="cat-card-header">
+              <div class="cat-icon-box tls-icon">🔒</div>
+              <div class="cat-meta">
+                <div class="cat-name">HTTPS / TLS Certificate</div>
+                <div id="cat-status-tls" class="cat-status">Checking...</div>
+              </div>
+              <div class="cat-score-pill" id="cat-pts-tls">0 / 10 pts</div>
+            </div>
+            <p id="cat-desc-tls" class="cat-desc">Verifies SSL certificate chain, issuer authority, expiration, and protocol.</p>
+            <div class="cat-quick-data" id="cat-quick-tls"></div>
+          </div>
+
+          <!-- 5. Redirects -->
+          <div class="cat-card" id="cat-card-redir">
+            <div class="cat-card-header">
+              <div class="cat-icon-box redir-icon">🔀</div>
+              <div class="cat-meta">
+                <div class="cat-name">Redirect Chain</div>
+                <div id="cat-status-redir" class="cat-status">Checking...</div>
+              </div>
+              <div class="cat-score-pill" id="cat-pts-redir">0 / 5 pts</div>
+            </div>
+            <p id="cat-desc-redir" class="cat-desc">Traces hops, detects HTTP downgrade, cross-domain hops, and loops.</p>
+            <div class="cat-quick-data" id="cat-quick-redir"></div>
+          </div>
+
+          <!-- 6. Security Headers -->
+          <div class="cat-card" id="cat-card-headers">
+            <div class="cat-card-header">
+              <div class="cat-icon-box hdr-icon">📋</div>
+              <div class="cat-meta">
+                <div class="cat-name">Security Headers</div>
+                <div id="cat-status-headers" class="cat-status">Checking...</div>
+              </div>
+              <div class="cat-score-pill" id="cat-pts-headers">0 / 10 pts</div>
+            </div>
+            <p id="cat-desc-headers" class="cat-desc">Checks CSP, HSTS, XFO, nosniff, and server information disclosure.</p>
+            <div class="cat-quick-data" id="cat-quick-headers"></div>
+          </div>
+        </div>
+
+        <!-- ── Unified Findings List ── -->
+        <div class="findings-section" id="findings-section">
+          <div class="findings-header">
+            <div>
+              <h3 class="section-title">⚠️ Identified Findings &amp; Evidence Chains</h3>
+              <p class="section-sub">Transparent evidence for every finding with test methodology, limitations, and recommendations</p>
+            </div>
+            <!-- Severity Filter Tabs -->
+            <div class="severity-tabs" role="tablist">
+              <button class="sev-tab active" data-filter="all">All (<span id="count-all">0</span>)</button>
+              <button class="sev-tab" data-filter="Critical">🔴 Critical (<span id="count-critical">0</span>)</button>
+              <button class="sev-tab" data-filter="High">🟠 High (<span id="count-high">0</span>)</button>
+              <button class="sev-tab" data-filter="Medium">🟡 Medium (<span id="count-medium">0</span>)</button>
+              <button class="sev-tab" data-filter="Low">🔵 Low (<span id="count-low">0</span>)</button>
+              <button class="sev-tab" data-filter="Informational">⚪ Info (<span id="count-info">0</span>)</button>
+            </div>
+          </div>
+
+          <div id="findings-container" class="findings-container"></div>
+        </div>
+
+        <!-- ── Expandable Deep-Dive Panels ── -->
+        <div class="deep-dive-section">
+          <h3 class="section-title">🔬 Detailed Technical Diagnostics &amp; Evidence</h3>
+          <p class="section-sub">Expand any panel below for low-level evidence, raw telemetry, and server fix snippets</p>
+
+          <!-- Accordion 1: Threat Intelligence -->
+          <details class="diag-accordion" id="acc-ti">
+            <summary class="diag-summary">
+              <span class="diag-title">🛡️ Multi-Source Threat Intelligence Telemetry</span>
+              <span class="diag-indicator">▾</span>
+            </summary>
+            <div class="diag-content" id="diag-ti-content"></div>
+          </details>
+
+          <!-- Accordion 2: TLS Certificate -->
+          <details class="diag-accordion" id="acc-tls">
+            <summary class="diag-summary">
+              <span class="diag-title">🔒 TLS/SSL Certificate Inspection</span>
+              <span class="diag-indicator">▾</span>
+            </summary>
+            <div class="diag-content" id="diag-tls-content"></div>
+          </details>
+
+          <!-- Accordion 3: Redirect Chain -->
+          <details class="diag-accordion" id="acc-redir">
+            <summary class="diag-summary">
+              <span class="diag-title">🔀 Step-by-Step Redirect Chain Traversal</span>
+              <span class="diag-indicator">▾</span>
+            </summary>
+            <div class="diag-content" id="diag-redir-content"></div>
+          </details>
+
+          <!-- Accordion 4: Domain & DNS -->
+          <details class="diag-accordion" id="acc-dns">
+            <summary class="diag-summary">
+              <span class="diag-title">🌐 DNS Records &amp; Infrastructure Details</span>
+              <span class="diag-indicator">▾</span>
+            </summary>
+            <div class="diag-content" id="diag-dns-content"></div>
+          </details>
+
+          <!-- Accordion 5: Security Headers & Fix Snippets -->
+          <details class="diag-accordion" id="acc-headers" open>
+            <summary class="diag-summary">
+              <span class="diag-title">📋 HTTP Security Headers &amp; Copy-Ready Fix Code</span>
+              <span class="diag-indicator">▾</span>
+            </summary>
+            <div class="diag-content">
+              <div id="headers-grid" class="headers-list" role="list"></div>
+              <div class="info-section-title">🔍 Information Leakage Headers</div>
+              <div id="info-grid" class="headers-list" role="list"></div>
+            </div>
+          </details>
+
+          <!-- Accordion 6: Cookies & Session Security -->
+          <details class="diag-accordion" id="acc-cookies">
+            <summary class="diag-summary">
+              <span class="diag-title">🍪 Observable Cookie Security &amp; Attributes</span>
+              <span class="diag-indicator">▾</span>
+            </summary>
+            <div class="diag-content" id="diag-cookies-content"></div>
+          </details>
+
+          <!-- Accordion 7: Raw Technical Evidence & Audit Logs -->
+          <details class="diag-accordion" id="acc-raw-evidence">
+            <summary class="diag-summary">
+              <span class="diag-title">📑 Raw Technical Evidence &amp; Full Test Audit Log</span>
+              <span class="diag-indicator">▾</span>
+            </summary>
+            <div class="diag-content" id="diag-raw-evidence-content"></div>
+          </details>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── Landing Section: How It Works ── -->
+    <section id="how-it-works" class="info-section container">
+      <div class="section-title-wrap text-center">
+        <h2 class="section-title">How It Works</h2>
+        <p class="section-sub">Evidence-based website risk analysis in five automated stages</p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">01</div>
+          <h3>URL Ingestion &amp; SSRF Shield</h3>
+          <p>We normalize URL syntax, detect IP formats, and verify hostnames against blocked private networks and cloud metadata ranges to prevent SSRF.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">02</div>
+          <h3>Multi-Signal Analysis</h3>
+          <p>We inspect DNS records, reverse PTR, TLD history, URL entropy, homoglyph lookalikes, and hop-by-hop HTTP redirects concurrently.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">03</div>
+          <h3>Threat Feed Comparison</h3>
+          <p>URLs are checked against global security engines including Google Safe Browsing and VirusTotal. If feeds are unconfigured or down, we report actual status rather than faking clean records.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">04</div>
+          <h3>Normalized Risk Scoring</h3>
+          <p>Signals are mapped into transparent mathematical categories (0–100 risk score), strictly isolating configuration gaps (like missing CSP) from true malware.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-number">05</div>
+          <h3>Actionable Reporting</h3>
+          <p>You receive an explainable report with severity ratings, confidence levels, and copy-ready config snippets for Nginx, Apache, and Express.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Landing Section: Security Checks We Run ── -->
+    <section id="security-checks" class="info-section container">
+      <div class="section-title-wrap text-center">
+        <h2 class="section-title">Security Checks We Run</h2>
+        <p class="section-sub">Comprehensive multi-layer defense verification</p>
+      </div>
+
+      <div class="checks-grid">
+        <div class="check-box">
+          <div class="check-icon">🛡️</div>
+          <h4>Threat Intelligence</h4>
+          <p>Cross-references target domains and paths with Google Safe Browsing and VirusTotal antivirus engines to catch phishing, malware, and rogue hosts.</p>
+        </div>
+        <div class="check-box">
+          <div class="check-icon">🔒</div>
+          <h4>TLS / SSL Encryption</h4>
+          <p>Performs cryptographic handshakes to verify certificate chain authority, expiration countdown, protocol version (TLS 1.2 / 1.3), and hostname matching.</p>
+        </div>
+        <div class="check-box">
+          <div class="check-icon">🔀</div>
+          <h4>Redirect Defense</h4>
+          <p>Traces every redirect step to identify protocol downgrades (HTTPS → HTTP), redirect loops, excessive chains, and unexpected cross-domain jumps.</p>
+        </div>
+        <div class="check-box">
+          <div class="check-icon">📋</div>
+          <h4>HTTP Security Headers</h4>
+          <p>Evaluates Content-Security-Policy, HSTS, X-Frame-Options, nosniff, Referrer-Policy, and flags information leakage like Server and X-Powered-By banners.</p>
+        </div>
+        <div class="check-box">
+          <div class="check-icon">🔎</div>
+          <h4>URL Heuristics &amp; DGA</h4>
+          <p>Measures Shannon entropy, Punycode/IDN homograph characters, brand typo-squatting, non-standard web ports, and open-redirect parameters.</p>
+        </div>
+        <div class="check-box">
+          <div class="check-icon">🌐</div>
+          <h4>DNS &amp; Cloud Infrastructure</h4>
+          <p>Resolves IPv4/IPv6 records, validates reverse PTR, identifies hosting providers (Cloudflare, AWS, Google Cloud), and flags suspicious disposable TLDs.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Landing Section: Why Results Can Be Uncertain ── -->
+    <section id="uncertainty" class="info-section container">
+      <div class="callout-card">
+        <div class="callout-icon">⚖️</div>
+        <div class="callout-text">
+          <h3>Why "100% Safe" Does Not Exist in Cybersecurity</h3>
+          <p>
+            No automated security scanner can ever guarantee that a website is 100% safe. Here is why:
+          </p>
+          <ul class="callout-list">
+            <li><strong>Zero-Day &amp; Newly Registered Threats:</strong> Attackers register fresh domains and deploy phishing kits minutes before launching campaigns, before security feeds have indexed them.</li>
+            <li><strong>Cloaking &amp; IP Geofencing:</strong> Malicious servers often detect automated scanners and serve harmless placeholder pages to audit bots while delivering exploits only to real visitors.</li>
+            <li><strong>Compromised Subpages:</strong> A legitimate corporate website may have clean root headers but harbor an unpatched WordPress plugin or vulnerable contact form on an obscure subpath.</li>
+            <li><strong>Dynamic Content:</strong> Third-party advertising networks and user-generated uploads can inject malicious payloads at any time after our scan finishes.</li>
+          </ul>
+          <p class="callout-conclusion">
+            Our scanner provides an objective, evidence-based assessment of publicly observable signals. A "SAFE" or "LOW RISK" grade means no active indicators were found — always practice defense-in-depth.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Landing Section: FAQ ── -->
+    <section id="faq" class="info-section container">
+      <div class="section-title-wrap text-center">
+        <h2 class="section-title">Frequently Asked Questions</h2>
+        <p class="section-sub">Clear answers to common website security and scanning questions</p>
+      </div>
+
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary class="faq-question">Why are missing security headers rated as Low/Medium risk rather than Malicious?</summary>
+          <div class="faq-answer">
+            <p>Security headers (like Content-Security-Policy or X-Frame-Options) represent defensive configuration hardening. Missing a security header means your site is less protected against attacks like XSS or clickjacking, but it does NOT mean your website is infected with malware or attempting to defraud visitors. We strictly separate "Configuration Weakness" from "Confirmed Malicious Intent".</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-question">Why does Threat Intelligence show "Not configured"?</summary>
+          <div class="faq-answer">
+            <p>We believe in absolute technical integrity: we NEVER fake security results. If third-party threat intelligence APIs (such as VirusTotal or Google Safe Browsing) do not have API keys configured in the backend environment, the scanner truthfully reports "Not checked — API key not configured" rather than creating a fabricated clean result.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-question">How does the 0–100 Risk Score work?</summary>
+          <div class="faq-answer">
+            <p>Our scoring model is mathematically normalized across six vectors: Threat Intelligence (0–50 pts), URL Heuristics (0–15 pts), Domain Infrastructure (0–15 pts), TLS/SSL (0–10 pts), Redirects (0–5 pts), and Security Headers (0–5 pts). Lower scores indicate lower risk. If any trusted intelligence source confirms malware or phishing, the result is immediately classified as a KNOWN THREAT regardless of other points.</p>
+          </div>
+        </details>
+
+        <details class="faq-item">
+          <summary class="faq-question">How does the scanner prevent SSRF vulnerabilities?</summary>
+          <div class="faq-answer">
+            <p>The scanner implements strict multi-layer SSRF defenses: it validates URL schemes (HTTP/HTTPS only), resolves hostnames prior to connecting, and verifies all resolved IP addresses against a comprehensive list of blocked internal networks (127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, AWS metadata 169.254.169.254, IPv6 loopback, etc.). Furthermore, every redirect hop is independently re-validated before being followed.</p>
+          </div>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer class="site-footer">
+    <div class="container footer-content">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <img src="/static/aegovx-logo.jpg" alt="AEGOVX Logo" class="footer-logo-img" />
+          <div>
+            <div class="site-name">AEGOVX</div>
+            <div class="footer-tagline">EVIDENCE BEFORE TRUST — Transparent Technical Security Intelligence</div>
+          </div>
+        </div>
+        <div class="footer-links">
+          <a href="#how-it-works">Methodology</a>
+          <a href="#security-checks">Checks</a>
+          <a href="#uncertainty">Evidence Limits</a>
+          <a href="#faq">FAQ</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p class="footer-legal">
+          <strong>Defensive &amp; Evidence-First Architecture:</strong> AEGOVX performs passive observational scans against public endpoints. Results reflect observable network signals at scan time. No scanner can guarantee 100% security.
+        </p>
+        <p class="footer-copy">
+          &copy; 2026 AEGOVX. All rights reserved. Evidence Before Trust.
+        </p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/main.js"></script>
+</body>
+</html>
