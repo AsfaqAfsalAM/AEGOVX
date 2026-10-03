@@ -90,45 +90,83 @@ async function inspectSslCertificate(hostname: string): Promise<ExtraChecks['ssl
     });
   });
 }
+/**
+ * Case-insensitive header lookup by iterating actual entries.
+ * More reliable than headers.get(name) in some Node.js undici environments.
+ */
+function getHeaderCI(headers: Headers, name: string): string | null {
+  const lower = name.toLowerCase();
+  for (const [key, val] of headers.entries()) {
+    if (key.toLowerCase() === lower) return val;
+  }
+  return null;
+}
+
+/**
+ * HEAD request with redirect:manual so we capture headers on the redirect
+ * response itself (important — HSTS lives on the 301, not the 200).
+ */
+async function fetchManualHeaders(url: string, timeoutMs = 8000): Promise<Headers | null> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(url, {
+      method: 'HEAD',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; SecurityScanner/2.0)',
+        'Accept': 'text/html,*/*;q=0.8',
+      },
+      signal: controller.signal,
+      redirect: 'manual',
+    });
+    clearTimeout(timer);
+    return res.headers;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Inspect HTTP Security Headers (HSTS, CSP, X-Frame-Options, etc.)
+ *
+ * Why the old code was wrong:
+ * - redirect:'follow' only gives you the FINAL response headers.
+ *   But HSTS, X-Frame-Options etc. are often sent on the REDIRECT (3xx) hop,
+ *   not the final 200 page. google.com -> www.google.com sends HSTS on the 301.
+ * - Silent catch returned score:0 making unreachable sites look like bad-header sites.
+ *
+ * Fix strategy:
+ * 1. HEAD with redirect:manual  -> captures 3xx headers (where HSTS lives)
+ * 2. Follow Location header     -> HEAD the redirect target too, merge both
+ * 3. Retry with GET             -> fallback for servers that reject HEAD
+ * 4. Try www. prefix            -> fallback for bare-domain responses
  */
 async function inspectSecurityHeaders(targetUrl: string): Promise<ExtraChecks['headers']> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
+  const checks = [
+    { name: 'Strict-Transport-Security', key: 'hsts',                weight: 25 },
+    { name: 'Content-Security-Policy',   key: 'csp',                 weight: 25 },
+    { name: 'X-Frame-Options',           key: 'xFrameOptions',       weight: 20 },
+    { name: 'X-Content-Type-Options',    key: 'xContentTypeOptions', weight: 15 },
+    { name: 'Referrer-Policy',           key: 'referrerPolicy',      weight: 10 },
+    { name: 'Permissions-Policy',        key: 'permissionsPolicy',   weight:  5 },
+  ];
 
-    const res = await fetch(targetUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) SecurityScanner/2.0',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-      signal: controller.signal,
-      redirect: 'follow',
-    });
+  // Merge response headers into our lowercase-keyed map (first writer wins per key)
+  function mergeHeaders(target: Map<string, string>, headers: Headers) {
+    for (const [key, val] of headers.entries()) {
+      const lk = key.toLowerCase();
+      if (!target.has(lk)) target.set(lk, val);
+    }
+  }
 
-    clearTimeout(timeout);
-
-    const headers = res.headers;
+  // Build the final result object from the merged map
+  function buildResult(collected: Map<string, string>): ExtraChecks['headers'] {
     const foundHeaders: Record<string, string> = {};
     const missing: string[] = [];
-
-    const checks = [
-      { name: 'Strict-Transport-Security', key: 'hsts', weight: 25 },
-      { name: 'Content-Security-Policy', key: 'csp', weight: 25 },
-      { name: 'X-Frame-Options', key: 'xFrameOptions', weight: 20 },
-      { name: 'X-Content-Type-Options', key: 'xContentTypeOptions', weight: 15 },
-      { name: 'Referrer-Policy', key: 'referrerPolicy', weight: 10 },
-      { name: 'Permissions-Policy', key: 'permissionsPolicy', weight: 5 },
-    ];
-
     let score = 0;
-    const flags: any = {};
-
+    const flags: Record<string, boolean> = {};
     for (const c of checks) {
-      const val = headers.get(c.name.toLowerCase());
+      const val = collected.get(c.name.toLowerCase());
       if (val) {
         foundHeaders[c.name] = val;
         flags[c.key] = true;
@@ -138,31 +176,94 @@ async function inspectSecurityHeaders(targetUrl: string): Promise<ExtraChecks['h
         flags[c.key] = false;
       }
     }
-
     return {
       score,
-      hsts: flags.hsts,
-      csp: flags.csp,
-      xFrameOptions: flags.xFrameOptions,
-      xContentTypeOptions: flags.xContentTypeOptions,
-      referrerPolicy: flags.referrerPolicy,
-      permissionsPolicy: flags.permissionsPolicy,
+      hsts: flags.hsts ?? false,
+      csp: flags.csp ?? false,
+      xFrameOptions: flags.xFrameOptions ?? false,
+      xContentTypeOptions: flags.xContentTypeOptions ?? false,
+      referrerPolicy: flags.referrerPolicy ?? false,
+      permissionsPolicy: flags.permissionsPolicy ?? false,
       missingHeaders: missing,
       foundHeaders,
     };
-  } catch {
+  }
+
+  const collected = new Map<string, string>();
+
+  // --- Step 1: HEAD redirect:manual on the original URL ---
+  const hop1Headers = await fetchManualHeaders(targetUrl, 8000);
+  if (hop1Headers) {
+    mergeHeaders(collected, hop1Headers);
+
+    // --- Step 2: Follow Location to capture the destination's headers too ---
+    const location = getHeaderCI(hop1Headers, 'location');
+    if (location) {
+      let nextUrl = '';
+      try { nextUrl = new URL(location, targetUrl).toString(); } catch { /* ignore */ }
+      if (nextUrl) {
+        const hop2Headers = await fetchManualHeaders(nextUrl, 8000);
+        if (hop2Headers) {
+          mergeHeaders(collected, hop2Headers);
+          // One more potential hop (e.g. http->https->www)
+          const loc2 = getHeaderCI(hop2Headers, 'location');
+          if (loc2) {
+            try {
+              const hop3url = new URL(loc2, nextUrl).toString();
+              const hop3Headers = await fetchManualHeaders(hop3url, 6000);
+              if (hop3Headers) mergeHeaders(collected, hop3Headers);
+            } catch { /* ignore */ }
+          }
+        }
+      }
+    }
+  }
+
+  // --- Step 3: Retry with GET (some servers reject HEAD requests) ---
+  if (!collected.has('strict-transport-security') && !collected.has('x-frame-options')) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+      const res = await fetch(targetUrl, {
+        method: 'GET',
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SecurityScanner/2.0)', Accept: 'text/html,*/*' },
+        signal: controller.signal,
+        redirect: 'follow',
+      });
+      clearTimeout(timer);
+      mergeHeaders(collected, res.headers);
+    } catch { /* ignore */ }
+  }
+
+  // --- Step 4: Try www. prefix if still empty ---
+  if (collected.size === 0) {
+    try {
+      const parsed = new URL(targetUrl);
+      if (!parsed.hostname.startsWith('www.')) {
+        const wwwUrl = `${parsed.protocol}//www.${parsed.hostname}${parsed.pathname}`;
+        const wwwH = await fetchManualHeaders(wwwUrl, 6000);
+        if (wwwH) mergeHeaders(collected, wwwH);
+      }
+    } catch { /* ignore */ }
+  }
+
+  // Sentinel -1 means "site unreachable" — NOT "missing headers".
+  // The vendor check uses this to avoid marking unreachable sites as suspicious.
+  if (collected.size === 0) {
     return {
-      score: 0,
+      score: -1,
       hsts: false,
       csp: false,
       xFrameOptions: false,
       xContentTypeOptions: false,
       referrerPolicy: false,
       permissionsPolicy: false,
-      missingHeaders: ['Strict-Transport-Security', 'Content-Security-Policy', 'X-Frame-Options', 'X-Content-Type-Options', 'Referrer-Policy', 'Permissions-Policy'],
+      missingHeaders: [],
       foundHeaders: {},
     };
   }
+
+  return buildResult(collected);
 }
 
 /**
@@ -563,16 +664,24 @@ export async function runScan(
         details = sslResult?.error || 'Invalid or expired SSL certificate';
       }
     } else if (v.id === 'security_headers') {
-      const score = headersResult?.score || 0;
-      if (score >= 60) {
+      const score = headersResult?.score ?? -1;
+      if (score === -1) {
+        // Could not fetch headers at all — mark unrated, not suspicious
+        status = 'unrated';
+        details = 'Header inspection could not connect to the target host';
+      } else if (score >= 60) {
         status = 'clean';
         details = `Strong security policy (Score: ${score}/100)`;
       } else if (score >= 20) {
         status = 'clean';
-        details = `Standard security headers (Score: ${score}/100)`;
-      } else {
+        details = `Partial security headers present (Score: ${score}/100)`;
+      } else if (score > 0) {
         status = 'suspicious';
-        details = `Missing key defense headers: ${headersResult?.missingHeaders.slice(0, 3).join(', ')}`;
+        details = `Weak header policy — missing: ${headersResult?.missingHeaders.slice(0, 3).join(', ')}`;
+      } else {
+        // score === 0 with actual headers checked means truly all missing
+        status = 'suspicious';
+        details = `No security headers detected — missing: ${headersResult?.missingHeaders.slice(0, 3).join(', ')}`;
       }
     } else if (v.id === 'whois_domain_age') {
       const age = whoisResult?.domainAgeYears;

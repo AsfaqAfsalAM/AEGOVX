@@ -438,17 +438,20 @@ export default function ReportPage() {
               {/* Security Headers Card */}
               {(() => {
                 const h = scan.extraChecks.headers;
-                const score = h?.score || 0;
-                const grade =
+                const rawScore = h?.score ?? -1;
+                const unreachable = rawScore === -1;
+                const score = unreachable ? 0 : rawScore;
+                const grade = unreachable ? 'N/A' :
                   score >= 90 ? 'A+' :
                   score >= 75 ? 'A' :
                   score >= 60 ? 'B' :
                   score >= 40 ? 'C' :
                   score >= 20 ? 'D' : 'F';
-                const gradeColor =
-                  score >= 75 ? 'text-emerald-500 bg-emerald-950 border-emerald-700' :
-                  score >= 40 ? 'text-amber-400 bg-amber-950 border-amber-700' :
-                  'text-rose-400 bg-rose-950 border-rose-700';
+                const gradeColor = unreachable
+                  ? 'text-slate-400 bg-slate-800 border-slate-600'
+                  : score >= 75 ? 'text-emerald-500 bg-emerald-950 border-emerald-700'
+                  : score >= 40 ? 'text-amber-400 bg-amber-950 border-amber-700'
+                  : 'text-rose-400 bg-rose-950 border-rose-700';
                 const barColor =
                   score >= 75 ? 'from-emerald-500 to-teal-400' :
                   score >= 40 ? 'from-amber-500 to-yellow-400' :
@@ -528,63 +531,77 @@ export default function ReportPage() {
                     <div className="mb-3">
                       <div className="flex justify-between text-[10px] text-slate-400 mb-1">
                         <span>Header Security Score</span>
-                        <span className="font-mono font-bold">{score}/100</span>
+                        <span className="font-mono font-bold">{unreachable ? 'N/A' : `${score}/100`}</span>
                       </div>
                       <div className="h-1.5 w-full rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full bg-gradient-to-r ${barColor} transition-all duration-700`}
-                          style={{ width: `${score}%` }}
-                        />
+                        {unreachable ? (
+                          <div className="h-full w-full rounded-full bg-slate-600/40 animate-pulse" />
+                        ) : (
+                          <div
+                            className={`h-full rounded-full bg-gradient-to-r ${barColor} transition-all duration-700`}
+                            style={{ width: `${score}%` }}
+                          />
+                        )}
                       </div>
                     </div>
 
-                    {/* Header rows */}
-                    <div className="space-y-1.5">
-                      {headerRows.map((row) => (
-                        <div key={row.key} className="flex items-start gap-2">
-                          <div className="mt-0.5 flex-shrink-0">
-                            {row.present === true ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                            ) : row.present === false ? (
-                              <XCircle className="w-3.5 h-3.5 text-rose-500" />
-                            ) : (
-                              <Minus className="w-3.5 h-3.5 text-slate-400" />
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 font-mono">
-                                {row.label}
-                              </span>
-                              <span className={`text-[9px] font-bold px-1 rounded ${
-                                row.present
-                                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400'
-                                  : 'bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400'
-                              }`}>
-                                {row.present ? 'SET' : 'MISSING'}
-                              </span>
-                              <span className="text-[9px] text-slate-400 font-mono">+{row.weight}pts</span>
+                    {/* Unreachable state */}
+                    {unreachable ? (
+                      <div className="flex items-center gap-2 py-3 text-slate-400">
+                        <Minus className="w-4 h-4 flex-shrink-0" />
+                        <p className="text-xs italic">Could not connect to host — header inspection unavailable</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Header rows */}
+                        <div className="space-y-1.5">
+                          {headerRows.map((row) => (
+                            <div key={row.key} className="flex items-start gap-2">
+                              <div className="mt-0.5 flex-shrink-0">
+                                {row.present === true ? (
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                ) : row.present === false ? (
+                                  <XCircle className="w-3.5 h-3.5 text-rose-500" />
+                                ) : (
+                                  <Minus className="w-3.5 h-3.5 text-slate-400" />
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 font-mono">
+                                    {row.label}
+                                  </span>
+                                  <span className={`text-[9px] font-bold px-1 rounded ${
+                                    row.present
+                                      ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400'
+                                      : 'bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400'
+                                  }`}>
+                                    {row.present ? 'SET' : 'MISSING'}
+                                  </span>
+                                  <span className="text-[9px] text-slate-400 font-mono">+{row.weight}pts</span>
+                                </div>
+                                {row.present && row.value ? (
+                                  <p className="text-[10px] font-mono text-sky-400/80 dark:text-sky-500/80 truncate mt-0.5" title={row.value}>
+                                    {row.value.length > 42 ? row.value.slice(0, 42) + '…' : row.value}
+                                  </p>
+                                ) : (
+                                  <p className="text-[10px] text-slate-400 italic mt-0.5">{row.desc}</p>
+                                )}
+                              </div>
                             </div>
-                            {row.present && row.value ? (
-                              <p className="text-[10px] font-mono text-sky-400/80 dark:text-sky-500/80 truncate mt-0.5" title={row.value}>
-                                {row.value.length > 42 ? row.value.slice(0, 42) + '…' : row.value}
-                              </p>
-                            ) : (
-                              <p className="text-[10px] text-slate-400 italic mt-0.5">{row.desc}</p>
-                            )}
-                          </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
 
-                    {/* Missing headers warning */}
-                    {h?.missingHeaders && h.missingHeaders.length > 0 && (
-                      <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
-                        <p className="text-[10px] text-amber-500 flex items-start gap-1">
-                          <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                          <span>{h.missingHeaders.length} header{h.missingHeaders.length > 1 ? 's' : ''} missing — reduces trust score</span>
-                        </p>
-                      </div>
+                        {/* Missing headers warning */}
+                        {h?.missingHeaders && h.missingHeaders.length > 0 && (
+                          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+                            <p className="text-[10px] text-amber-500 flex items-start gap-1">
+                              <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                              <span>{h.missingHeaders.length} header{h.missingHeaders.length > 1 ? 's' : ''} missing — reduces trust score</span>
+                            </p>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 );
