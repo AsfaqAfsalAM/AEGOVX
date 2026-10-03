@@ -2,6 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import { ScanReport, RecentScanItem } from './types';
 
+// Increment this whenever the scanner logic changes significantly.
+// All cached results become invalid, forcing fresh rescans automatically.
+const SCANNER_VERSION = 'v4';
+
 // Detect or initialize SQLite database
 // Node.js 22+ & 24 include native `node:sqlite`
 let dbInstance: any = null;
@@ -225,14 +229,14 @@ export function setScanCache(domain: string, scanId: string, ttlHours: number = 
           scan_id = excluded.scan_id,
           expires_at = excluded.expires_at
       `);
-      stmt.run(domain.toLowerCase(), scanId, expiresAt);
+      stmt.run(`${domain.toLowerCase()}:${SCANNER_VERSION}`, scanId, expiresAt);
       return;
     } catch (err) {
       console.error('Error in setScanCache:', err);
     }
   }
 
-  memoryStore.cache.set(domain.toLowerCase(), { scanId, expiresAt });
+  memoryStore.cache.set(`${domain.toLowerCase()}:${SCANNER_VERSION}`, { scanId, expiresAt });
 }
 
 export function getCachedScan(domain: string): ScanReport | null {
@@ -244,7 +248,7 @@ export function getCachedScan(domain: string): ScanReport | null {
         SELECT scan_id, expires_at FROM scan_cache
         WHERE domain = ? AND expires_at > ?
       `);
-      const row: any = stmt.get(domain.toLowerCase(), now);
+      const row: any = stmt.get(`${domain.toLowerCase()}:${SCANNER_VERSION}`, now);
       if (row && row.scan_id) {
         const scan = getScan(row.scan_id);
         if (scan && scan.status === 'completed') {
@@ -256,7 +260,7 @@ export function getCachedScan(domain: string): ScanReport | null {
     }
   }
 
-  const cached = memoryStore.cache.get(domain.toLowerCase());
+  const cached = memoryStore.cache.get(`${domain.toLowerCase()}:${SCANNER_VERSION}`);
   if (cached && cached.expiresAt > now) {
     const scan = memoryStore.scans.get(cached.scanId);
     if (scan && scan.status === 'completed') {
@@ -271,13 +275,18 @@ export function clearDomainCache(domain: string): void {
   const db = getDb();
   if (db) {
     try {
-      const stmt = db.prepare(`DELETE FROM scan_cache WHERE domain = ?`);
-      stmt.run(domain.toLowerCase());
+      const stmt = db.prepare(`DELETE FROM scan_cache WHERE domain = ? OR domain LIKE ?`);
+      stmt.run(`${domain.toLowerCase()}:${SCANNER_VERSION}`, `${domain.toLowerCase()}:%`);
     } catch (err) {
       console.error('Error clearing cache:', err);
     }
   }
-  memoryStore.cache.delete(domain.toLowerCase());
+  // Clear all versions for this domain from memory
+  for (const key of memoryStore.cache.keys()) {
+    if (key === domain.toLowerCase() || key.startsWith(`${domain.toLowerCase()}:`)) {
+      memoryStore.cache.delete(key);
+    }
+  }
 }
 
 export function getRecentScans(limit: number = 10): RecentScanItem[] {

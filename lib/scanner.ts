@@ -219,30 +219,43 @@ async function inspectSecurityHeaders(targetUrl: string): Promise<ExtraChecks['h
     }
   }
 
-  // --- Step 3: Retry with GET (some servers reject HEAD requests) ---
-  if (!collected.has('strict-transport-security') && !collected.has('x-frame-options')) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch(targetUrl, {
-        method: 'GET',
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SecurityScanner/2.0)', Accept: 'text/html,*/*' },
-        signal: controller.signal,
-        redirect: 'follow',
-      });
-      clearTimeout(timer);
-      mergeHeaders(collected, res.headers);
-    } catch { /* ignore */ }
-  }
+  // --- Step 3: GET with redirect:follow to capture final 200 response headers ---
+  // ALWAYS run this — redirect hops (Steps 1-2) only capture 3xx response headers.
+  // Critical headers like HSTS, CSP, X-Content-Type-Options, Referrer-Policy
+  // live on the FINAL 200 response, not on the intermediate 301 hops.
+  // Bug that was here: condition `!collected.has('x-frame-options')` caused Step 3
+  // to be skipped for google.com because x-frame-options came from the 301 hop,
+  // but HSTS/CSP were only on the final 200 — so they were never fetched.
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(targetUrl, {
+      method: 'GET',
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SecurityScanner/2.0)', Accept: 'text/html,*/*;q=0.8' },
+      signal: controller.signal,
+      redirect: 'follow',  // follow ALL redirects, read final 200 headers
+    });
+    clearTimeout(timer);
+    mergeHeaders(collected, res.headers);
+  } catch { /* ignore — site may be down or blocking GET */ }
 
-  // --- Step 4: Try www. prefix if still empty ---
-  if (collected.size === 0) {
+  // --- Step 4: Try www. prefix as a last resort if still no security headers ---
+  if (!collected.has('strict-transport-security') && !collected.has('x-frame-options')) {
     try {
       const parsed = new URL(targetUrl);
       if (!parsed.hostname.startsWith('www.')) {
         const wwwUrl = `${parsed.protocol}//www.${parsed.hostname}${parsed.pathname}`;
-        const wwwH = await fetchManualHeaders(wwwUrl, 6000);
-        if (wwwH) mergeHeaders(collected, wwwH);
+        // Use GET + follow for www too so we get the final 200
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(wwwUrl, {
+          method: 'GET',
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; SecurityScanner/2.0)', Accept: 'text/html,*/*' },
+          signal: controller.signal,
+          redirect: 'follow',
+        });
+        clearTimeout(timer);
+        mergeHeaders(collected, res.headers);
       }
     } catch { /* ignore */ }
   }
