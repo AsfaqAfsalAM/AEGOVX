@@ -78,8 +78,8 @@ export default function HomePage() {
   const sampleTargets = [
     { label: 'google.com', domain: 'google.com', type: 'Safe' },
     { label: 'github.com', domain: 'github.com', type: 'Safe' },
+    { label: 'cloudflare.com', domain: 'cloudflare.com', type: 'Safe' },
     { label: 'wikipedia.org', domain: 'wikipedia.org', type: 'Safe' },
-    { label: 'testsafebrowsing.appspot.com', domain: 'testsafebrowsing.appspot.com', type: 'Malware Test' },
   ];
 
   return (
