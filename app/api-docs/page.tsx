@@ -56,7 +56,7 @@ export default function ApiDocsPage() {
 
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Example cURL Request</h4>
           <pre className="p-4 rounded-xl bg-slate-950 text-slate-300 text-xs font-mono overflow-x-auto border border-slate-800 mb-6">
-            {`curl -X GET "https://your-domain.com/api/public/check?domain=github.com"`}
+            {`curl -X GET "https://security-headers-checker-kappa.vercel.app/api/public/check?domain=github.com"`}
           </pre>
 
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Example JSON Response</h4>
@@ -73,8 +73,8 @@ export default function ApiDocsPage() {
   "unratedCount": 4,
   "scanDate": "Oct 1, 2026, 8:20 PM",
   "cached": true,
-  "reportUrl": "https://your-domain.com/report/scan_1727803200_abc123",
-  "badgeUrl": "https://your-domain.com/api/public/badge?domain=github.com"
+  "reportUrl": "https://security-headers-checker-kappa.vercel.app/report/scan_1727803200_abc123",
+  "badgeUrl": "https://security-headers-checker-kappa.vercel.app/api/public/badge?domain=github.com"
 }`}
           </pre>
         </div>

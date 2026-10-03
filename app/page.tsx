@@ -27,15 +27,16 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [recentScans, setRecentScans] = useState<RecentScanItem[]>([]);
+  const [recentLoading, setRecentLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch recent scans
     fetch('/api/recent')
       .then((res) => res.json())
       .then((data) => {
         if (data.scans) setRecentScans(data.scans);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setRecentLoading(false));
   }, []);
 
   const handleScanSubmit = async (target?: string) => {
@@ -88,7 +89,7 @@ export default function HomePage() {
       <div className="absolute top-0 inset-x-0 h-96 bg-gradient-to-b from-emerald-500/10 via-sky-500/5 to-transparent pointer-events-none -z-10" />
 
       {/* Hero Section */}
-      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-16 pb-12 text-center">
+      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-12 text-center">
         {/* Brand Banner with uploaded logo */}
         <div className="flex flex-col items-center justify-center mb-6">
           <div className="relative w-28 h-28 sm:w-36 sm:h-36 rounded-3xl overflow-hidden bg-slate-950 border border-slate-700/80 shadow-2xl shadow-sky-950/60 p-1 mb-4 group hover:border-sky-500/50 transition-all duration-300">
@@ -183,7 +184,7 @@ export default function HomePage() {
                 type="button"
                 onClick={() => {
                   setUrlInput(item.domain);
-                  handleScanSubmit(item.domain);
+                  // Just fill the input — user clicks Scan themselves
                 }}
                 className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono transition-colors"
               >
@@ -237,16 +238,32 @@ export default function HomePage() {
         </div>
 
         {/* Recent Scans Section */}
-        {recentScans.length > 0 && (
-          <div className="mt-16 sm:mt-20 text-left">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <History className="w-5 h-5 text-emerald-500" />
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Recent Website Scans</h2>
-              </div>
-              <span className="text-xs text-slate-500 dark:text-slate-400">Cached for 1 hour</span>
+        <div className="mt-16 sm:mt-20 text-left">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <History className="w-5 h-5 text-emerald-500" />
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Recent Website Scans</h2>
             </div>
+            <Link href="/history" className="text-xs text-emerald-500 hover:underline font-semibold">View your history →</Link>
+          </div>
 
+          {recentLoading ? (
+            /* Loading skeleton */
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 animate-pulse">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="h-3.5 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
+                    <div className="h-4 w-12 bg-slate-200 dark:bg-slate-700 rounded" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="h-3 w-16 bg-slate-200 dark:bg-slate-700 rounded" />
+                    <div className="h-3 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : recentScans.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {recentScans.map((scan) => (
                 <Link
@@ -279,8 +296,8 @@ export default function HomePage() {
                 </Link>
               ))}
             </div>
-          </div>
-        )}
+          ) : null}
+        </div>
       </div>
     </div>
   );

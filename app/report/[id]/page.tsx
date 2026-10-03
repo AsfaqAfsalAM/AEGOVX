@@ -26,7 +26,8 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  Minus
+  Minus,
+  Share2
 } from 'lucide-react';
 import { ScanReport, VendorResult } from '@/lib/types';
 import { sortVendorResults } from '@/lib/vendors';
@@ -72,6 +73,25 @@ export default function ReportPage() {
 
           if (data.scan.status === 'completed' || data.scan.status === 'failed') {
             if (pollInterval) clearInterval(pollInterval);
+
+            // Save to localStorage scan history
+            if (data.scan.status === 'completed' && typeof window !== 'undefined') {
+              try {
+                const STORAGE_KEY = 'aegovx_scan_history';
+                const existing = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                const filtered = existing.filter((s: any) => s.id !== data.scan.id);
+                const entry = {
+                  id: data.scan.id,
+                  domain: data.scan.domain,
+                  verdict: data.scan.verdict,
+                  totalChecks: data.scan.totalChecks,
+                  positiveMatched: data.scan.positiveMatched,
+                  timestamp: data.scan.timestamp,
+                  scanDate: data.scan.scanDate,
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify([entry, ...filtered].slice(0, 50)));
+              } catch { /* ignore */ }
+            }
           }
         }
       } catch (err: unknown) {
@@ -335,17 +355,41 @@ export default function ReportPage() {
               ) : (
                 <>
                   <Copy className="w-3.5 h-3.5" />
-                  <span>Copy report link</span>
+                  <span>Copy link</span>
                 </>
               )}
             </button>
+
+            {/* Share on X (Twitter) */}
+            <a
+              href={scan ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(`I scanned ${scan.domain} with AEGOVX — ${scan.verdict} across ${scan.totalChecks} security engines. Check it out:`)}&url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}` : '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-700 text-white font-semibold text-xs sm:text-sm flex items-center gap-1.5 transition-colors border border-slate-700"
+              title="Share on X (Twitter)"
+            >
+              <Share2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Share</span>
+            </a>
+
+            {/* WhatsApp */}
+            <a
+              href={scan ? `https://api.whatsapp.com/send?text=${encodeURIComponent(`I scanned ${scan.domain} with AEGOVX — ${scan.verdict} across ${scan.totalChecks} engines. ${typeof window !== 'undefined' ? window.location.href : ''}`)}` : '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-2 rounded-xl bg-green-600 hover:bg-green-500 text-white font-semibold text-xs sm:text-sm flex items-center gap-1.5 transition-colors"
+              title="Share on WhatsApp"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">WhatsApp</span>
+            </a>
 
             <button
               onClick={handleDownloadPdf}
               className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Download PDF</span>
+              <span>PDF</span>
             </button>
           </div>
         </div>
